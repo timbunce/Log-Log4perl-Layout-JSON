@@ -1,2 +1,3 @@
 .build/
 *.swp
+Log-Log4perl-Layout-JSON-*

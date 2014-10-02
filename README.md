@@ -1,88 +1,84 @@
-# WebAPI::DBIC
+# Log::Log4perl::Layout::JSON
 
-A composable RESTful JSON+HAL API to DBIx::Class schemas using roles, Web::Machine and Path::Router
+Layout a log message as a JSON hash, including MDC data
 
-[![Build Status](https://secure.travis-ci.org/timbunce/WebAPI-DBIC.png)](http://travis-ci.org/timbunce/WebAPI-DBIC)
-[![Coverage Status](https://coveralls.io/repos/timbunce/WebAPI-DBIC/badge.png)](https://coveralls.io/r/timbunce/WebAPI-DBIC)
+[![Build Status](https://secure.travis-ci.org/timbunce/Log-Log4perl-Layout-JSON.png)](http://travis-ci.org/timbunce/Log-Log4perl-Layout-JSON)
+[![Coverage Status](https://coveralls.io/repos/timbunce/Log-Log4perl-Layout-JSON/badge.png)](https://coveralls.io/r/timbunce/Log-Log4perl-Layout-JSON)
+
+# SYNOPSIS
+
+Example configuration:
+
+    log4perl.rootLogger = INFO, Test
+    log4perl.appender.Test = Log::Log4perl::Appender::String
+    log4perl.appender.Test.layout = Log::Log4perl::Layout::JSON
+
+
+    # Specify which fields to include in the JSON hash:
+    # (using PatternLayout placeholders)
+
+    log4perl.appender.Test.layout.field.message = %m
+    log4perl.appender.Test.layout.field.category = %c
+    log4perl.appender.Test.layout.field.class = %C
+    log4perl.appender.Test.layout.field.file = %F{1}
+    log4perl.appender.Test.layout.field.sub = %M{1}
+
+
+    # Specify a prefix string for the JSON (optional)
+    # http://blog.gerhards.net/2012/03/cee-enhanced-syslog-defined.html
+
+    log4perl.appender.Test.layout.prefix = @cee:
+
+
+    # Include the data in the Log::Log4perl::MDC hash (optional)
+    log4perl.appender.Test.layout.include_mdc = 1
+
+    # Use this field name for MDC data (else MDC data is placed at top level)
+    log4perl.appender.Test.layout.name_for_mdc = mdc
+
+
+    # Use canonical order for hash keys (optional)
+
+    log4perl.appender.Test.layout.canonical = 1
 
 # DESCRIPTION
 
-WebAPI::DBIC provides the parts you need to build a feature-rich RESTful JSON web
-service API backed by DBIx::Class schemas.
+This class implements a "Log::Log4perl" layout format, similar to
+Log::Log4perl::Layout::PatternLayout except that the output is a JSON
+hash.
 
-WebAPI::DBIC features include:
+The JSON hash is ASCII encoded, with no newlines or other whitespace,
+and is suitable for output, via Log::Log4perl appenders, to files and
+syslog etc.
 
-* Use of the JSON+HAL (Hypertext Application Language) lean hypermedia type
+Contextual data in the Log::Log4perl::MDC hash can be included.
 
-* Automatic detection and exposure of result set relationships as HAL `_links`
+## EXAMPLE
 
-* Supports safe robust multi-related-record CRUD transactions
+    local Log::Log4perl::MDC->get_context->{request} = {
+        request_uri => $req->request_uri,
+        query_parameters => $req->query_parameters
+    };
 
-* Built on the strong foundations of
-[Web::Machine](https://metacpan.org/pod/Web::Machine),
-[Plack](https://metacpan.org/pod/Plack) and
-[Path::Router](https://metacpan.org/pod/Path::Router).
-(Support for interfacing with other routers is planned.)
+    # ...
 
-* Built as fine-grained roles for maximum reusability and extensibility
+    for my $id (@list_of_ids) {
 
-* A built-in copy of the generic HAL API browser application
+        local Log::Log4perl::MDC->get_context->{id} = $id;
 
-* An example PSGI file that gives you an instant web service for any DBIx::Class schema
+        do_something_useful($id);
 
-# HAL - Hypertext Application Language
+    }
 
-The [Hypertext Application Language](http://stateless.co/hal_specification.html)
-hypermedia type (or HAL for short)
-is a simple JSON format that gives a consistent and easy way to hyperlink
-between resources in your API.
+Using code like that shown above, any log messages produced by
+`do_something_useful()` will automatically include 'contextual data'
+showing the request URI, the hash of decoded query parameters, and the
+current value of $id.
 
-Adopting HAL makes the API explorable, and its documentation easily
-discoverable from within the API itself.  In short, it will make your API
-easier to work with and therefore more attractive to client developers.
+If there's a `$SIG{__WARN__}` handler setup to log warnings via
+"Log::Log4perl" then any warnings from perl, such as uninitialized
+values, will also be logged with this context data included.
 
-A JavaScript "HAL Browser" is included in the WebAPI::DBIC distribution.
-
-APIs that adopt HAL can be easily served and consumed using [open source
-libraries available for most major programming languages](https://github.com/mikekelly/hal_specification/wiki/Libraries).
-It's also simple enough that you can just deal with it as you would any other
-JSON.  
-
-# QUICK START
-
-    $ git clone https://github.com/timbunce/WebAPI-DBIC.git
-    $ cd WebAPI-DBIC
-    $ cpanm Module::CPANfile
-    $ cpanm --installdeps .    # this may take a while
-
-    $ export WEBAPI_DBIC_SCHEMA=DummyLoadedSchema
-    $ plackup -Ilib -It/lib webapi-dbic-any.psgi
-    ... open a web browser on port 5000 to browse the API
-
-Then try it out with your own schema:
-
-    $ export WEBAPI_DBIC_SCHEMA=Foo::Bar     # your own schema
-    $ export WEBAPI_DBIC_HTTP_AUTH_TYPE=none # recommended
-    $ export DBI_DSN=dbi:Driver:...          # your own database
-    $ export DBI_USER=... # for initial connection, if needed
-    $ export DBI_PASS=... # for initial connection, if needed
-    $ plackup -Ilib webapi-dbic-any.psgi
-    ... open a web browser on port 5000 to browse your new API
-
-The API is read-only by default. To enable PUT, POST, DELETE etc, set the
-`WEBAPI_DBIC_WRITABLE` environment variable.
-
-# STATUS
-
-The WebAPI::DBIC code has been in production use for over a year, however it's
-only recently been open sourced (July 2014) so it's still lacking in
-documentation, tests etc.
-
-It's also likely to undergo a period of refactoring now there are more
-developers contributing and the code is being applied to more domains.
-
-Interested? Please get involved!
-
-See HOW TO GET HELP in the [WebAPI::DBIC documentation](blob/master/lib/WebAPI/DBIC.pm).
-
-
+The use of "local" ensures that contextual data doesn't stay in the MDC
+beyond the relevant scope. (For more complex cases you could use
+something like Scope::Guard or simply take care to delete old data.)
