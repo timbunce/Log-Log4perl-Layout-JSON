@@ -10,37 +10,15 @@ Log::Log4perl::Layout::JSON - Layout a log message as a JSON hash, including MDC
 
 Example configuration:
 
-    log4perl.rootLogger = INFO, Test
-    log4perl.appender.Test = Log::Log4perl::Appender::String
-    log4perl.appender.Test.layout = Log::Log4perl::Layout::JSON
+    log4perl.appender.Example.layout = Log::Log4perl::Layout::JSON
+    log4perl.appender.Example.layout.field.message = %m{chomp}
+    log4perl.appender.Example.layout.field.category = %c
+    log4perl.appender.Example.layout.field.class = %C
+    log4perl.appender.Example.layout.field.file = %F{1}
+    log4perl.appender.Example.layout.field.sub = %M{1}
+    log4perl.appender.Example.layout.include_mdc = 1
 
-
-    # Specify which fields to include in the JSON hash:
-    # (using PatternLayout placeholders)
-
-    log4perl.appender.Test.layout.field.message = %m
-    log4perl.appender.Test.layout.field.category = %c
-    log4perl.appender.Test.layout.field.class = %C
-    log4perl.appender.Test.layout.field.file = %F{1}
-    log4perl.appender.Test.layout.field.sub = %M{1}
-
-
-    # Specify a prefix string for the JSON (optional)
-    # http://blog.gerhards.net/2012/03/cee-enhanced-syslog-defined.html
-
-    log4perl.appender.Test.layout.prefix = @cee:
-
-
-    # Include the data in the Log::Log4perl::MDC hash (optional)
-    log4perl.appender.Test.layout.include_mdc = 1
-
-    # Use this field name for MDC data (else MDC data is placed at top level)
-    log4perl.appender.Test.layout.name_for_mdc = mdc
-
-
-    # Use canonical order for hash keys (optional)
-
-    log4perl.appender.Test.layout.canonical = 1
+See below for more configuration options.
 
 =head1 DESCRIPTION
 
@@ -50,9 +28,84 @@ L<Log::Log4perl::Layout::PatternLayout> except that the output is a JSON hash.
 The JSON hash is ASCII encoded, with no newlines or other whitespace, and is
 suitable for output, via Log::Log4perl appenders, to files and syslog etc.
 
-Contextual data in the L<Log::Log4perl::MDC> hash can be included.
+Contextual data in the L<Log::Log4perl::MDC> hash will be included if
+L</include_mdc> is true.
 
-=head2 EXAMPLE
+=head1 LAYOUT CONFIGURATION
+
+=head2 field
+
+Specify one or more fields to include in the JSON hash. The value is a string
+containing one of more L<Log::Log4perl::Layout::PatternLayout> placeholders.
+For example:
+
+    log4perl.appender.Example.layout.field.message = %m{chomp}
+    log4perl.appender.Example.layout.field.category = %c
+    log4perl.appender.Example.layout.field.where = %F{1}:%L
+
+If no fields are specified, the default is C<message = %m{chomp}>.
+It is recommended that C<message> be the first field.
+
+=head2 prefix
+
+Specify a prefix string for the JSON. For example:
+
+    log4perl.appender.Example.layout.prefix = @cee:
+
+See http://blog.gerhards.net/2012/03/cee-enhanced-syslog-defined.html
+
+=head2 include_mdc
+
+Include the data in the Log::Log4perl::MDC hash.
+
+    log4perl.appender.Example.layout.include_mdc = 1
+
+See also L</name_for_mdc>.
+
+=head2 name_for_mdc
+
+Use this name as the key in the JSON hash for the contents of MDC data
+
+    log4perl.appender.Example.layout.name_for_mdc = mdc
+
+If not set then MDC data is placed at top level of the hash.
+
+Where MDC field names match the names of fields defined by the Log4perl
+configuration then the MDC values take precedence. This is currently construde
+as a feature.
+
+=head2 canonical
+
+If true then use canonical order for hash keys when encoding the JSON.
+
+    log4perl.appender.Example.layout.canonical = 1
+
+This is mainly intended for testing.
+
+=head2 max_json_length_kb
+
+Set the maximum JSON length in kilobytes. The default is 20KB.
+
+    log4perl.appender.Example.layout.max_json_length_kb = 3.8
+
+This is useful where some downstream system has a limit on the maximum size of
+a message.
+
+For example, rsyslog has a C<maxMessageSize> configuration parameter with a
+default of 4KB. Longer messages are simply truncated (which would corrupt the
+JSON). We use rsyslog with maxMessageSize set to 128KB.
+
+If the JSON is larger than the specified size (not including L</prefix>)
+then some action is performed to reduce the size of the JSON.
+
+Currently fields are simply removed until the JSON is within the size.
+The MDC field/fields are removed first and then the fields specified in the
+Log4perl config, in reverse order. A message is printed on C<STDERR> for each
+field removed.
+
+In future this rather dumb logic will be replaced by something smarter.
+
+=head2 EXAMPLE USING Log::Log4perl::MDC
 
     local Log::Log4perl::MDC->get_context->{request} = {
         request_uri => $req->request_uri,
@@ -70,7 +123,7 @@ Contextual data in the L<Log::Log4perl::MDC> hash can be included.
     }
 
 Using code like that shown above, any log messages produced by
-do_something_useful() will automatically include 'contextual data'
+do_something_useful() will automatically include the 'contextual data',
 showing the request URI, the hash of decoded query parameters, and the current
 value of $id.
 
@@ -88,6 +141,8 @@ L<Scope::Guard> or simply take care to delete old data.)
 use 5.008;
 use strict;
 use warnings;
+
+use Carp;
 
 use Log::Log4perl ();
 use Log::Log4perl::Level;
@@ -134,7 +189,7 @@ use Class::Tiny {
             };
         }
         else {
-            return sub { return %$mdc_hash };
+            return sub { return %$mdc_hash }; # unordered
         }
     },
 
@@ -143,6 +198,7 @@ use Class::Tiny {
     },
     include_mdc => 0,
     name_for_mdc => undef,
+    max_json_length_kb => 20,
 
     _separator => "\x01\x00\x01",
 
@@ -177,7 +233,9 @@ sub BUILD { ## no critic (RequireArgUnpacking)
 
     $self->field(delete $args->{field}) if $args->{field};
 
-    for my $arg_name (qw(prefix include_mdc name_for_mdc)) {
+    for my $arg_name (qw(
+        prefix include_mdc name_for_mdc max_json_length_kb
+    )) {
         my $arg = delete $args->{$arg_name}
             or next;
         $self->$arg_name( $arg->{value} );
@@ -186,12 +244,14 @@ sub BUILD { ## no critic (RequireArgUnpacking)
     warn "Unknown configuration items: @{[ sort keys %$args ]}"
         if %$args;
 
+    #use Data::Dumper; warn Dumper $self;
+
     # sanity check to catch problems with the config at build time
     if (1) {
         undef $last_render_error;
         $self->render("Testing $self config", "test", 1, 0);
         die $last_render_error if $last_render_error;
-   }
+    }
 
     return $self;
 }
@@ -200,23 +260,47 @@ sub BUILD { ## no critic (RequireArgUnpacking)
 sub render {
     my($self, $message, $category, $priority, $caller_level) = @_;
 
-    my @fields = split $self->_separator,
-        $self->_pattern_layout->render($message, $category, $priority, $caller_level);
+    my $layed_out_msg = $self->_pattern_layout->render($message, $category, $priority, $caller_level);
 
-    my @mdc_items = $self->mdc_handler->();
+    my @fields = (
+        split($self->_separator, $layed_out_msg),
+        $self->mdc_handler->() # MDC fields override non-MDC fields (not sure if this is a feature)
+    );
 
-    # @mdc_items might contain refs that cause encode to croak
-    # so we fall-back to include progressively less data data
-    my $err;
-    my $json = eval {                $self->codec->encode(+{ @fields, @mdc_items }) }
-            || eval { $err="mdc";    $self->codec->encode(+{ @fields })             }
-            || eval { $err="fields"; $self->codec->encode(+{ message => $message }) };
-    if ($err) {
-        chomp $@;
-        # avoid warn due to recursion risk
-        $last_render_error = sprintf "Error encoding %s %s: %s (%s)",
-            __PACKAGE__, $err, $@, join(' ', @fields, @mdc_items);
-        print STDERR "$last_render_error\n";
+    my $max_json_length = $self->max_json_length_kb * 1024;
+    my @dropped;
+    my $json;
+
+    RETRY: {
+
+        # MDC items might contain refs that cause encode to croak
+        # or the JSON might be too long
+        # so we fall-back to include progressively less data data
+        eval {
+            $json = $self->codec->encode(+{ @fields });
+
+            die sprintf "length %d > %d\n", length($json), $max_json_length
+                if length($json) > $max_json_length;
+        };
+        if ($@) {
+            my ($name) = splice @fields, -2;
+            push @dropped, $name;
+
+            # TODO get smarter here, especially if name_for_mdc is being used.
+            #
+            # Could encode each field and order by size then discard from top down.
+            # Note: if we edit any refs we'd need to edit clones
+            # If the 'message' field itself is > $max_json_length/2 then truncate
+            # the message to $max_json_length/2 first so we don't loose all the context data.
+            # Add an extra field to indicate truncation has happened?
+            chomp $@;
+            $last_render_error = sprintf "Error encoding %s: %s (retrying without %s)",
+                ref($self), $@, join(', ', @dropped);
+            # avoid warn due to recursion risk
+            print STDERR "$last_render_error\n";
+
+            goto RETRY if @fields;
+        }
     }
 
     return $self->prefix . $json;
