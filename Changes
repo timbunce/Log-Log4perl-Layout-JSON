@@ -2,6 +2,11 @@ Changes file for Log::Log4perl::Layout::JSON
 
 {{$NEXT}}
 
+   - Much better docs.
+   - Subclassable (uses Class::Tiny).
+   - Fixed Changes file.
+   - Added max_json_length_kb config.
+
 0.001001  2014-10-02 14:17:43+01:00 Europe/Dublin
 
   - the first release
