@@ -2,6 +2,8 @@ Changes file for Log::Log4perl::Layout::JSON
 
 {{$NEXT}}
 
+0.002002  2014-11-07 13:14:49+00:00 Europe/Dublin
+
   - Smarter pruning of messages larger than max_json_length_kb
 
 0.002001  2014-10-07 14:09:25+01:00 Europe/Dublin
