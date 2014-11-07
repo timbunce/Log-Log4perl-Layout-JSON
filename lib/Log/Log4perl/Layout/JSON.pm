@@ -189,13 +189,17 @@ use Class::Tiny {
             };
         }
         else {
-            return sub { return %$mdc_hash }; # unordered
+            return sub {
+                return %$mdc_hash unless $self->canonical;
+                return map { $_ => $mdc_hash->{$_} } sort keys %$mdc_hash;
+            };
         }
     },
 
     field => sub {
         return { message => { value => "%m{chomp}" } };
     },
+    canonical => 0,
     include_mdc => 0,
     name_for_mdc => undef,
     max_json_length_kb => 20,
@@ -227,14 +231,14 @@ sub BUILD { ## no critic (RequireArgUnpacking)
 
     delete $args->{value}; # => 'Log::Log4perl::Layout::JSON'
 
-    if (my $arg = delete $args->{canonical}) {
+    if (my $arg = $args->{canonical}) {
         $self->codec->canonical($arg->{value});
     }
 
     $self->field(delete $args->{field}) if $args->{field};
 
     for my $arg_name (qw(
-        prefix include_mdc name_for_mdc max_json_length_kb
+        canonical prefix include_mdc name_for_mdc max_json_length_kb
     )) {
         my $arg = delete $args->{$arg_name}
             or next;
@@ -264,7 +268,7 @@ sub render {
 
     my @fields = (
         split($self->_separator, $layed_out_msg),
-        $self->mdc_handler->() # MDC fields override non-MDC fields (not sure if this is a feature)
+        $self->mdc_handler->($self) # MDC fields override non-MDC fields (not sure if this is a feature)
     );
 
     my $max_json_length = $self->max_json_length_kb * 1024;
@@ -283,8 +287,54 @@ sub render {
                 if length($json) > $max_json_length;
         };
         if ($@) {
-            my ($name) = splice @fields, -2;
-            push @dropped, $name;
+            chomp $@;
+            my $encode_error = $@;
+
+            # first look for any top-level field that's more than half of max_json_length
+            # for non-ref values truncate the string and add some explanatory text
+            # for ref values replace with undef
+            # this should catch most cases of an individual field that's too big
+            my @truncated;
+            for my $i (0 .. @fields/2) {
+                my ($k, $v) = ($fields[$i], $fields[$i+1]);
+
+                # we use eval here to protect against fatal encoding errors
+                # (they'll get dealt with by the field pruning below)
+                my $len;
+                if (ref $v) {
+                    my $encoded = eval { $self->codec->encode(+{ $k => $v }) };
+                    if (not defined $encoded) {
+                        $fields[$i+1] = undef;
+                        push @truncated, sprintf "%s %s set to undef after encoding error (%s)", $k, ref($v), $@;
+                        next;
+                    }
+                    $len = length $encoded;
+                }
+                else {
+                    $len = length $v;
+                }
+                next if $len <= $max_json_length/2;
+
+                if (ref $v) {
+                    $fields[$i+1] = undef;
+                    push @truncated, sprintf "truncated %s %s from %d to undef", $k, ref($v), $len;
+                }
+                else {
+                    my $trunc_marker = sprintf("...[truncated, was %d chars total]...", $len);
+                    substr($fields[$i+1], ($max_json_length/2) - length($trunc_marker)) = $trunc_marker;
+                    push @truncated, sprintf "truncated %s from %d to %d", $k, $len, length($fields[$i+1]);
+                }
+            }
+
+            my $msg;
+            if (@truncated) {
+                $msg = join(", ", @truncated).", retrying";
+            }
+            else {
+                my ($name) = splice @fields, -2;
+                push @dropped, $name;
+                $msg = "retrying without ".join(", ", @dropped);
+            }
 
             # TODO get smarter here, especially if name_for_mdc is being used.
             #
@@ -293,9 +343,10 @@ sub render {
             # If the 'message' field itself is > $max_json_length/2 then truncate
             # the message to $max_json_length/2 first so we don't loose all the context data.
             # Add an extra field to indicate truncation has happened?
-            chomp $@;
-            $last_render_error = sprintf "Error encoding %s: %s (retrying without %s)",
-                ref($self), $@, join(', ', @dropped);
+
+
+            $last_render_error = sprintf "Error encoding %s: %s (%s)",
+                ref($self), $encode_error, $msg;
             # avoid warn due to recursion risk
             print STDERR "$last_render_error\n";
 

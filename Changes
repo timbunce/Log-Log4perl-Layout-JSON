@@ -2,12 +2,14 @@ Changes file for Log::Log4perl::Layout::JSON
 
 {{$NEXT}}
 
+  - Smarter pruning of messages larger than max_json_length_kb
+
 0.002001  2014-10-07 14:09:25+01:00 Europe/Dublin
 
-   - Much better docs.
-   - Subclassable (uses Class::Tiny).
-   - Fixed Changes file.
-   - Added max_json_length_kb config.
+  - Much better docs.
+  - Subclassable (uses Class::Tiny).
+  - Fixed Changes file.
+  - Added max_json_length_kb config.
 
 0.001001  2014-10-02 14:17:43+01:00 Europe/Dublin
 
