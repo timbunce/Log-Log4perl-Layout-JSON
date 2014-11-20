@@ -354,7 +354,7 @@ sub render {
         }
     }
 
-    return $self->prefix . $json;
+    return $self->prefix . $json . "\n";
 }
 
 1;

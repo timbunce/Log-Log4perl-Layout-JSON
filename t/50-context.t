@@ -28,14 +28,14 @@ subtest "with include_mdc" => sub {
     {
         local Log::Log4perl::MDC->get_context->{foo} = 42;
         $logger->info('info message');
-        is_deeply $appender->string(), '@cee:{"foo":42,"message":"info message"}';
+        is_deeply $appender->string(), '@cee:{"foo":42,"message":"info message"}'."\n";
     }
     $appender->string('');
 
     {
         local Log::Log4perl::MDC->get_context->{bar} = { baz => 1 };
         $logger->warn('warn message');
-        is_deeply $appender->string(), '@cee:{"bar":{"baz":1},"message":"warn message"}';
+        is_deeply $appender->string(), '@cee:{"bar":{"baz":1},"message":"warn message"}'."\n";
     }
     $appender->string('');
 
@@ -64,7 +64,7 @@ subtest "with include_mdc with name_for_mdc" => sub {
     {
         local Log::Log4perl::MDC->get_context->{foo} = 42;
         $logger->info('info message');
-        is_deeply $appender->string(), '@cee:{"mdc":{"foo":42},"message":"info message"}';
+        is_deeply $appender->string(), '@cee:{"mdc":{"foo":42},"message":"info message"}'."\n";
     }
     $appender->string('');
 

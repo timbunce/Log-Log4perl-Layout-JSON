@@ -26,7 +26,7 @@ subtest "no mdc" => sub {
     my $logger = Log::Log4perl->get_logger('foo');
 
     $logger->info('info message');
-    is_deeply $appender->string(), '{"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"info message","sub":"__ANON__"}';
+    is_deeply $appender->string(), '{"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"info message","sub":"__ANON__"}'."\n";
     $appender->string('');
 };
 
@@ -51,7 +51,7 @@ subtest "no mdc" => sub {
     my $logger = Log::Log4perl->get_logger('foo');
 
     $logger->info('info message');
-    is_deeply $appender->string(), '{"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"info message","sub":"__ANON__"}';
+    is_deeply $appender->string(), '{"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"info message","sub":"__ANON__"}'."\n";
     $appender->string('');
 };
 
@@ -80,13 +80,13 @@ subtest "with name_for_mdc" => sub {
     my $logger = Log::Log4perl->get_logger('foo');
 
     $logger->info('info message');
-    is_deeply $appender->string(), '@cee:{"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"info message","sub":"__ANON__"}';
+    is_deeply $appender->string(), '@cee:{"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"info message","sub":"__ANON__"}'."\n";
     $appender->string('');
 
     Log::Log4perl::MDC->get_context->{an_mdc_item}{second_level} = [ [ 42 ] ];
 
     $logger->warn('warn message');
-    is_deeply $appender->string(), '@cee:{"category":"foo","class":"Log::Log4perl::Logger","context":{"an_mdc_item":{"second_level":[[42]]}},"file":"Logger.pm","message":"warn message","sub":"__ANON__"}';
+    is_deeply $appender->string(), '@cee:{"category":"foo","class":"Log::Log4perl::Logger","context":{"an_mdc_item":{"second_level":[[42]]}},"file":"Logger.pm","message":"warn message","sub":"__ANON__"}'."\n";
     $appender->string('');
 };
 
@@ -113,13 +113,13 @@ subtest "without mdc" => sub {
     my $logger = Log::Log4perl->get_logger('foo');
 
     $logger->info('info message');
-    is_deeply $appender->string(), '@cee:{"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"info message","sub":"__ANON__"}';
+    is_deeply $appender->string(), '@cee:{"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"info message","sub":"__ANON__"}'."\n";
     $appender->string('');
 
     Log::Log4perl::MDC->get_context->{an_mdc_item}{second_level} = [ [ 42 ] ];
 
     $logger->warn('warn message');
-    is_deeply $appender->string(), '@cee:{"an_mdc_item":{"second_level":[[42]]},"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"warn message","sub":"__ANON__"}';
+    is_deeply $appender->string(), '@cee:{"an_mdc_item":{"second_level":[[42]]},"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"warn message","sub":"__ANON__"}'."\n";
     $appender->string('');
 };
 

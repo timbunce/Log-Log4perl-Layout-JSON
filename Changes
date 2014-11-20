@@ -2,6 +2,8 @@ Changes file for Log::Log4perl::Layout::JSON
 
 {{$NEXT}}
 
+  - Append a newline to the output, so it can be used with file appenders etc.
+
 0.002002  2014-11-07 13:14:49+00:00 Europe/Dublin
 
   - Smarter pruning of messages larger than max_json_length_kb

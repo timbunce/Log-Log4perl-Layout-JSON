@@ -35,7 +35,7 @@ subtest "max_json_length_kb truncate mdc field" => sub {
     $logger->info('info message');
     is $str, "Error encoding Log::Log4perl::Layout::JSON: length 155 > 96 (truncated foo from 120 to 48, retrying)\n",
         'correct warning';
-    is $appender->string(), '{"foo":"ffffffffff...[truncated, was 120 chars total]...","message":"info message"}',
+    is $appender->string(), '{"foo":"ffffffffff...[truncated, was 120 chars total]...","message":"info message"}'."\n",
         'correct log output';
     $str = '';                 # reset stderr message buffer
     $appender->string('');     # reset log output buffer
@@ -57,7 +57,7 @@ subtest "max_json_length_kb truncate and drop" => sub {
     $logger->info($too_long_string);
     is $str, "Error encoding Log::Log4perl::Layout::JSON: length 263 > 96 (truncated message from 120 to 48, truncated foo from 120 to 48, retrying)\n"
             ."Error encoding Log::Log4perl::Layout::JSON: length 119 > 96 (retrying without foo)\n";
-    is $appender->string(), '{"message":"ffffffffff...[truncated, was 120 chars total]..."}';
+    is $appender->string(), '{"message":"ffffffffff...[truncated, was 120 chars total]..."}'."\n";
     $str = '';                 # reset stderr message buffer
     $appender->string('');     # reset log output buffer
 
@@ -76,7 +76,7 @@ subtest "max_json_length_kb drop many mdc fields" => sub {
     is $str, "Error encoding Log::Log4perl::Layout::JSON: length 113 > 96 (retrying without 20)\n"
             ."Error encoding Log::Log4perl::Layout::JSON: length 105 > 96 (retrying without 20, 19)\n"
             ."Error encoding Log::Log4perl::Layout::JSON: length 97 > 96 (retrying without 20, 19, 18)\n";
-    is $appender->string(), '{"10":10,"11":11,"12":12,"13":13,"14":14,"15":15,"16":16,"17":17,"message":"hello world"}';
+    is $appender->string(), '{"10":10,"11":11,"12":12,"13":13,"14":14,"15":15,"16":16,"17":17,"message":"hello world"}'."\n";
     $str = '';                 # reset stderr message buffer
     $appender->string('');     # reset log output buffer
 
