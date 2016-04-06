@@ -263,7 +263,7 @@ sub BUILD { ## no critic (RequireArgUnpacking)
 
 sub render {
     my($self, $message, $category, $priority, $caller_level) = @_;
-
+    $caller_level++;
     my $layed_out_msg = $self->_pattern_layout->render($message, $category, $priority, $caller_level);
 
     my @fields = (
