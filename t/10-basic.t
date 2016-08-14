@@ -4,6 +4,8 @@ use Test::Most;
 
 use Log::Log4perl;
 
+use utf8;
+use Encode;
 
 subtest "no mdc" => sub {
 
@@ -121,6 +123,30 @@ subtest "without mdc" => sub {
     $logger->warn('warn message');
     is_deeply $appender->string(), '@cee:{"an_mdc_item":{"second_level":[[42]]},"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"warn message","sub":"__ANON__"}'."\n";
     $appender->string('');
+};
+
+subtest "utf8_configured_and_non_ascii_data" => sub {
+
+    my $conf = qq(
+        log4perl.rootLogger = INFO, Test
+        log4perl.appender.Test = Log::Log4perl::Appender::String
+        log4perl.appender.Test.layout = Log::Log4perl::Layout::JSON
+        log4perl.appender.Test.layout.field.message = %m
+        log4perl.appender.Test.layout.canonical = 1
+		log4perl.appender.Test.layout.utf8 = 1
+        log4perl.appender.Test.layout.field.category = %c
+        log4perl.appender.Test.layout.field.class = %C
+        log4perl.appender.Test.layout.field.file = %F{1}
+        log4perl.appender.Test.layout.field.sub = %M{1}
+    );
+    Log::Log4perl::init( \$conf );
+
+    ok my $appender = Log::Log4perl->appender_by_name("Test");
+    ok my $logger  = Log::Log4perl->get_logger('foo');
+
+    $logger->info('A string containing ütf8');
+
+    is_deeply $appender->string(), encode_utf8('{"category":"foo","class":"Log::Log4perl::Logger","file":"Logger.pm","message":"A string containing ütf8","sub":"__ANON__"}')."\n";
 };
 
 done_testing();

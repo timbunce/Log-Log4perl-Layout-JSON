@@ -105,6 +105,10 @@ field removed.
 
 In future this rather dumb logic will be replaced by something smarter.
 
+=head2 utf8
+
+Switch JSON encoding from ASCII to UTF-8.
+
 =head2 EXAMPLE USING Log::Log4perl::MDC
 
     local Log::Log4perl::MDC->get_context->{request} = {
@@ -236,6 +240,12 @@ sub BUILD { ## no critic (RequireArgUnpacking)
     }
 
     $self->field(delete $args->{field}) if $args->{field};
+
+	# Optionally override encoding from ascii to utf8
+	if (my $arg = $args->{utf8}) {
+		delete $args->{utf8};
+	    $self->codec( $self->codec->ascii(0)->utf8(1) );
+    }
 
     for my $arg_name (qw(
         canonical prefix include_mdc name_for_mdc max_json_length_kb
