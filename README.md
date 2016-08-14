@@ -29,17 +29,17 @@ Example configuration:
 
     log4perl.appender.Test.layout.prefix = @cee:
 
-
     # Include the data in the Log::Log4perl::MDC hash (optional)
     log4perl.appender.Test.layout.include_mdc = 1
 
     # Use this field name for MDC data (else MDC data is placed at top level)
     log4perl.appender.Test.layout.name_for_mdc = mdc
 
-
     # Use canonical order for hash keys (optional)
-
     log4perl.appender.Test.layout.canonical = 1
+
+	# Encode the JSON hash to UTF-8
+	log4perl.appender.Test.layout.utf8 = 1
 
 # DESCRIPTION
 
@@ -49,7 +49,7 @@ hash.
 
 The JSON hash is ASCII encoded, with no newlines or other whitespace,
 and is suitable for output, via Log::Log4perl appenders, to files and
-syslog etc.
+syslog etc. The JSON hash can, optionally, be UTF-8 encoded.
 
 Contextual data in the Log::Log4perl::MDC hash can be included.
 
